@@ -11,6 +11,47 @@ $leptonicaBin = $env:LEPTONICA_BIN
 $defaultKeyPath = Join-Path $HOME '.ssh\calc2key_pi_temp'
 $piRelayPath = '/usr/local/bin/Calc2KeyPiRelay'
 $piRelayLog = '~/calc2key-bridge.log'
+$localPresetPath = Join-Path $repoRoot 'bridge-host.local.env'
+$relayPresets = @()
+
+function Get-LocalRelayPresets {
+    param([string]$Path)
+
+    if (-not (Test-Path $Path)) {
+        return @()
+    }
+
+    $values = @{}
+    foreach ($line in Get-Content $Path -ErrorAction SilentlyContinue) {
+        $trimmed = $line.Trim()
+        if (-not $trimmed -or $trimmed.StartsWith('#') -or -not $trimmed.Contains('=')) {
+            continue
+        }
+
+        $parts = $trimmed.Split('=', 2)
+        $values[$parts[0].Trim()] = $parts[1].Trim()
+    }
+
+    $presets = @()
+    foreach ($index in 1..2) {
+        $label = $values["CALC2KEY_PRESET${index}_LABEL"]
+        if (-not $label) {
+            continue
+        }
+
+        $presets += [pscustomobject]@{
+            Label = $label
+            PiHost = $values["CALC2KEY_PRESET${index}_PI_HOST"]
+            PiUser = $values["CALC2KEY_PRESET${index}_PI_USER"]
+            SshKeyPath = $values["CALC2KEY_PRESET${index}_SSH_KEY_PATH"]
+            BridgeHostIp = $values["CALC2KEY_PRESET${index}_BRIDGE_HOST_IP"]
+        }
+    }
+
+    return $presets
+}
+
+$relayPresets = Get-LocalRelayPresets -Path $localPresetPath
 
 function Test-TcpPort {
     param(
@@ -112,6 +153,24 @@ $form.Controls.Add($keyPathBox)
 $form.Controls.Add((New-Label 'Bridge Host IP' 16 150))
 $bridgeHostBox = New-TextBox '' 150 148 180
 $form.Controls.Add($bridgeHostBox)
+
+$presetX = 340
+foreach ($preset in $relayPresets) {
+    $presetButton = New-Object System.Windows.Forms.Button
+    $presetButton.Text = $preset.Label
+    $presetButton.Tag = $preset
+    $presetButton.Location = New-Object System.Drawing.Point($presetX, 146)
+    $presetButton.Size = New-Object System.Drawing.Size(72, 28)
+    $presetButton.Add_Click({
+        $selectedPreset = $this.Tag
+        if ($selectedPreset.PiHost) { $piHostBox.Text = $selectedPreset.PiHost }
+        if ($selectedPreset.PiUser) { $userBox.Text = $selectedPreset.PiUser }
+        if ($selectedPreset.SshKeyPath) { $keyPathBox.Text = $selectedPreset.SshKeyPath }
+        if ($selectedPreset.BridgeHostIp) { $bridgeHostBox.Text = $selectedPreset.BridgeHostIp }
+    })
+    $form.Controls.Add($presetButton)
+    $presetX += 78
+}
 
 $form.Controls.Add((New-Label 'Bridge Port' 16 182))
 $portBox = New-TextBox '28400' 150 180 100

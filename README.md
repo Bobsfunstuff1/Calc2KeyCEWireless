@@ -36,6 +36,7 @@ For the Windows bridge host:
 - Set `LEPTONICA_ROOT` to the dependency prefix, or add that prefix to `CMAKE_PREFIX_PATH`.
 - If the runtime DLL is not on `PATH`, set `LEPTONICA_BIN` before launching `Launch-Calc2KeyBridge.ps1`.
 - `CALC2KEY_PI_USER` can be used to prefill the default SSH username in the launcher and bridge host UI.
+- Copy `bridge-host.local.env.example` to `bridge-host.local.env` if you want local-only preset buttons such as Tailscale or Hotspot IP autofill in the launcher and bridge UI.
 
 ## Quickstart
 

@@ -359,4 +359,5 @@ healthchecksdb
 /bridge_host.log
 /Calc2KeyCE.Fast/imgui.ini
 /Calc2KeyCE.Fast/keybinds.cfg
+/bridge-host.local.env
 /dist/

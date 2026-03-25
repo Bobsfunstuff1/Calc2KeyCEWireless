@@ -139,6 +139,16 @@ struct KeyRepeatState {
 
 std::array<KeyRepeatState, 128> gKeyRepeatStates{};
 
+struct RelayPreset {
+    std::array<char, 32> label{};
+    std::array<char, 128> piHost{};
+    std::array<char, 64> piUser{};
+    std::array<char, MAX_PATH> sshKeyPath{};
+    std::array<char, 128> bridgeHostIp{};
+};
+
+std::array<RelayPreset, 2> gRelayPresets{};
+
 void appendLog(const std::string& message) {
     std::lock_guard<std::mutex> lock(gLogMutex);
     std::ofstream log("bridge_host.log", std::ios::app);
@@ -171,6 +181,118 @@ std::string trimCopy(const std::string& value) {
     }
     const auto last = value.find_last_not_of(" \t\r\n");
     return value.substr(first, last - first + 1);
+}
+
+void copyToBuffer(const std::string& value, char* buffer, std::size_t size) {
+    if (!buffer || size == 0) {
+        return;
+    }
+
+    std::snprintf(buffer, size, "%s", value.c_str());
+}
+
+std::filesystem::path findLocalRelayConfigPath(const std::filesystem::path& startPath) {
+    if (startPath.empty()) {
+        return {};
+    }
+
+    std::filesystem::path current = std::filesystem::absolute(startPath);
+    if (!std::filesystem::is_directory(current)) {
+        current = current.parent_path();
+    }
+
+    for (int i = 0; i < 6 && !current.empty(); ++i) {
+        const auto candidate = current / "bridge-host.local.env";
+        if (std::filesystem::exists(candidate)) {
+            return candidate;
+        }
+        current = current.parent_path();
+    }
+
+    return {};
+}
+
+void applyRelayPreset(std::size_t index) {
+    if (index >= gRelayPresets.size()) {
+        return;
+    }
+
+    const auto& preset = gRelayPresets[index];
+    if (preset.label[0] == '\0') {
+        return;
+    }
+
+    if (preset.piHost[0] != '\0') {
+        std::snprintf(gPiHost.data(), gPiHost.size(), "%s", preset.piHost.data());
+    }
+    if (preset.piUser[0] != '\0') {
+        std::snprintf(gPiUser.data(), gPiUser.size(), "%s", preset.piUser.data());
+    }
+    if (preset.sshKeyPath[0] != '\0') {
+        std::snprintf(gSshKeyPath.data(), gSshKeyPath.size(), "%s", preset.sshKeyPath.data());
+    }
+    if (preset.bridgeHostIp[0] != '\0') {
+        std::snprintf(gBridgeHostIp.data(), gBridgeHostIp.size(), "%s", preset.bridgeHostIp.data());
+    }
+}
+
+void loadLocalRelayPresets(const std::filesystem::path& startPath) {
+    for (auto& preset : gRelayPresets) {
+        preset = {};
+    }
+
+    const auto configPath = findLocalRelayConfigPath(startPath);
+    if (configPath.empty()) {
+        return;
+    }
+
+    std::ifstream file(configPath);
+    if (!file) {
+        return;
+    }
+
+    std::string line;
+    while (std::getline(file, line)) {
+        const std::string trimmed = trimCopy(line);
+        if (trimmed.empty() || trimmed[0] == '#') {
+            continue;
+        }
+
+        const auto equalsPos = trimmed.find('=');
+        if (equalsPos == std::string::npos) {
+            continue;
+        }
+
+        const std::string key = trimCopy(trimmed.substr(0, equalsPos));
+        const std::string value = trimCopy(trimmed.substr(equalsPos + 1));
+        if (key.rfind("CALC2KEY_PRESET", 0) != 0 || key.size() < 17) {
+            continue;
+        }
+
+        const char presetChar = key[16];
+        if (presetChar < '1' || presetChar > '2') {
+            continue;
+        }
+
+        RelayPreset& preset = gRelayPresets[static_cast<std::size_t>(presetChar - '1')];
+        const auto suffixPos = key.find('_', 17);
+        if (suffixPos == std::string::npos) {
+            continue;
+        }
+
+        const std::string field = key.substr(suffixPos + 1);
+        if (field == "LABEL") {
+            copyToBuffer(value, preset.label.data(), preset.label.size());
+        } else if (field == "PI_HOST") {
+            copyToBuffer(value, preset.piHost.data(), preset.piHost.size());
+        } else if (field == "PI_USER") {
+            copyToBuffer(value, preset.piUser.data(), preset.piUser.size());
+        } else if (field == "SSH_KEY_PATH") {
+            copyToBuffer(value, preset.sshKeyPath.data(), preset.sshKeyPath.size());
+        } else if (field == "BRIDGE_HOST_IP") {
+            copyToBuffer(value, preset.bridgeHostIp.data(), preset.bridgeHostIp.size());
+        }
+    }
 }
 
 std::string winQuote(const std::string& value) {
@@ -2539,6 +2661,19 @@ void drawRelayControlUi(uint16_t listenPort) {
     ImGui::InputText("SSH User", gPiUser.data(), gPiUser.size());
     ImGui::InputText("SSH Key Path", gSshKeyPath.data(), gSshKeyPath.size());
     ImGui::InputText("Bridge Host IP", gBridgeHostIp.data(), gBridgeHostIp.size());
+    bool drewPresetButton = false;
+    for (std::size_t i = 0; i < gRelayPresets.size(); ++i) {
+        if (gRelayPresets[i].label[0] == '\0') {
+            continue;
+        }
+        if (drewPresetButton) {
+            ImGui::SameLine();
+        }
+        if (ImGui::Button(gRelayPresets[i].label.data())) {
+            applyRelayPreset(i);
+        }
+        drewPresetButton = true;
+    }
     ImGui::InputText("Pi Relay Path", gPiRelayPath.data(), gPiRelayPath.size());
     ImGui::InputText("Pi Relay Log", gPiRelayLogPath.data(), gPiRelayLogPath.size());
     ImGui::Text("Bridge Port: %u", listenPort);
@@ -2638,6 +2773,7 @@ void initializeRelayDefaults() {
         std::snprintf(gSshKeyPath.data(), gSshKeyPath.size(), "%s", keyPathString.c_str());
     }
     initializeVddDefaults(userProfile);
+    loadLocalRelayPresets(std::filesystem::current_path());
 }
 
 void enableDpiAwareness() {
