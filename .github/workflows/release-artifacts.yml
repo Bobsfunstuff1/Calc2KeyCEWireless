@@ -1,0 +1,73 @@
+name: Release Artifacts
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-pi-relay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Pi relay dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential cmake pkg-config libusb-1.0-0-dev
+
+      - name: Build Pi relay
+        run: |
+          cmake -S Calc2KeyCE.PiRelay -B Calc2KeyCE.PiRelay/build
+          cmake --build Calc2KeyCE.PiRelay/build -j
+
+      - name: Package Pi relay
+        run: |
+          chmod +x tools/package-pi-relay-release.sh
+          ./tools/package-pi-relay-release.sh dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Calc2KeyCE-PiRelay
+          path: dist/Calc2KeyCE-PiRelay.tar.gz
+
+  build-windows-host:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bootstrap vcpkg
+        shell: powershell
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git $env:RUNNER_TEMP\vcpkg
+          & "$env:RUNNER_TEMP\vcpkg\bootstrap-vcpkg.bat"
+          & "$env:RUNNER_TEMP\vcpkg\vcpkg.exe" install leptonica:x64-windows
+
+      - name: Configure Windows host
+        shell: powershell
+        run: |
+          $env:LEPTONICA_ROOT = "$env:RUNNER_TEMP\vcpkg\installed\x64-windows"
+          cmake -S Calc2KeyCE.BridgeHostWin -B Calc2KeyCE.BridgeHostWin/build -G "Visual Studio 17 2022" -A x64 -DLEPTONICA_ROOT="$env:LEPTONICA_ROOT" -DCMAKE_PREFIX_PATH="$env:LEPTONICA_ROOT"
+
+      - name: Build Windows host
+        run: cmake --build Calc2KeyCE.BridgeHostWin/build --config Release
+
+      - name: Collect runtime files
+        shell: powershell
+        run: |
+          $vcpkgBin = "$env:RUNNER_TEMP\vcpkg\installed\x64-windows\bin"
+          Copy-Item "$vcpkgBin\*.dll" "Calc2KeyCE.BridgeHostWin\build\Release" -Force -ErrorAction SilentlyContinue
+
+      - name: Package Windows host
+        shell: powershell
+        run: |
+          .\tools\package-windows-host-release.ps1 -Configuration Release -OutputDir dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Calc2KeyCE-WindowsHost
+          path: dist/Calc2KeyCE-WindowsHost-Release.zip

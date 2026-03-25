@@ -76,6 +76,17 @@ cd Calc2KeyCE.Calc
 make
 ```
 
+Release packaging:
+
+```powershell
+.\tools\package-windows-host-release.ps1
+.\tools\package-calculator-release.ps1
+```
+
+```bash
+./tools/package-pi-relay-release.sh
+```
+
 ## Build Guide
 
 ### 1. Windows Bridge Host
@@ -293,6 +304,12 @@ Recommended release artifact layout:
 - `pi/Calc2PiConsoleRelay`
 - `calculator/Calc2Key.8xp`
 - `calculator/PiConCtl.8xp`
+
+This repo also includes:
+
+- a GitHub Actions workflow at `.github/workflows/release-artifacts.yml`
+- local packaging scripts under `tools/`
+- manual calculator packaging via `tools/package-calculator-release.ps1`
 
 Third Party Libraries:
 + zx0: https://github.com/einar-saukas/ZX0
