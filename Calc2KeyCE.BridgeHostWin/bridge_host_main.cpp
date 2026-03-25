@@ -2097,19 +2097,11 @@ void handleCalcKeys(const uint8_t* recData) {
 
         if (binding & 0x10000) {
             const WORD vk = static_cast<WORD>(binding & 0xFFFF);
-            if (isRepeatableVirtualKey(vk)) {
+            {
                 std::lock_guard<std::mutex> repeatLock(gKeyRepeatMutex);
-                if (pressedNow) {
-                    queueKeyboardTap(inputs, inCount, vk);
-                    gKeyRepeatStates[i].active = true;
-                    gKeyRepeatStates[i].vk = vk;
-                    gKeyRepeatStates[i].nextRepeat = std::chrono::steady_clock::now() + std::chrono::milliseconds(kKeyRepeatInitialDelayMs);
-                } else {
-                    gKeyRepeatStates[i] = {};
-                }
-            } else {
-                queueKeyboardInput(inputs, inCount, vk, pressedNow);
+                gKeyRepeatStates[i] = {};
             }
+            queueKeyboardInput(inputs, inCount, vk, pressedNow);
         }
         else {
             const uint8_t mouseAction = static_cast<uint8_t>(binding & 0xFF);
