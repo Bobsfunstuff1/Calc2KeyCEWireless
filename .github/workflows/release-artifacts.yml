@@ -13,6 +13,40 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
+  build-calculator:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install calculator build dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y make g++ curl zip
+
+      - name: Install CEdev toolchain
+        run: |
+          curl -L https://github.com/CE-Programming/toolchain/releases/latest/download/CEdev-Linux.tar.gz -o "$RUNNER_TEMP/CEdev-Linux.tar.gz"
+          mkdir -p "$RUNNER_TEMP/CEdev"
+          tar -xzf "$RUNNER_TEMP/CEdev-Linux.tar.gz" -C "$RUNNER_TEMP/CEdev" --strip-components=1
+          echo "$RUNNER_TEMP/CEdev/bin" >> "$GITHUB_PATH"
+
+      - name: Build calculator artifacts
+        run: |
+          make -C Calc2KeyCE.Calc clean
+          make -C Calc2KeyCE.Calc
+          make -C Calc2PiCon.Calc clean
+          make -C Calc2PiCon.Calc
+
+      - name: Package calculator artifacts
+        run: |
+          chmod +x tools/package-calculator-release.sh
+          ./tools/package-calculator-release.sh dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Calc2KeyCE-Calculator
+          path: dist/Calc2KeyCE-Calculator.zip
+
   build-pi-relay:
     runs-on: ubuntu-latest
     steps:

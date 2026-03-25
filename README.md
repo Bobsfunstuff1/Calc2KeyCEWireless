@@ -309,7 +309,7 @@ This repo also includes:
 
 - a GitHub Actions workflow at `.github/workflows/release-artifacts.yml`
 - local packaging scripts under `tools/`
-- manual calculator packaging via `tools/package-calculator-release.ps1`
+- calculator packaging scripts for both Windows and Linux CI via `tools/package-calculator-release.ps1` and `tools/package-calculator-release.sh`
 
 Third Party Libraries:
 + zx0: https://github.com/einar-saukas/ZX0
