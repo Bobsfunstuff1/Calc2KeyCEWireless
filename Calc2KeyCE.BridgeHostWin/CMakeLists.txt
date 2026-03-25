@@ -33,6 +33,16 @@ if (DEFINED ENV{LEPTONICA_ROOT} AND NOT "$ENV{LEPTONICA_ROOT}" STREQUAL "")
 endif()
 
 set(LEPTONICA_INCLUDE_DIR "")
+foreach(_leptonica_root IN LISTS _leptonica_roots)
+    if (EXISTS "${_leptonica_root}/include/leptonica/allheaders.h")
+        set(LEPTONICA_INCLUDE_DIR "${_leptonica_root}/include")
+        break()
+    elseif (EXISTS "${_leptonica_root}/include/allheaders.h")
+        set(LEPTONICA_INCLUDE_DIR "${_leptonica_root}/include")
+        break()
+    endif()
+endforeach()
+
 find_package(Leptonica CONFIG QUIET)
 
 if (TARGET leptonica)
@@ -41,11 +51,13 @@ elseif (TARGET Leptonica::Leptonica)
     set(LEPTONICA_TARGET Leptonica::Leptonica)
 endif()
 
-find_path(LEPTONICA_INCLUDE_DIR
-    NAMES leptonica/allheaders.h allheaders.h
-    HINTS ${_leptonica_roots}
-    PATH_SUFFIXES include include/leptonica
-)
+if (NOT LEPTONICA_INCLUDE_DIR)
+    find_path(LEPTONICA_INCLUDE_DIR
+        NAMES leptonica/allheaders.h allheaders.h
+        HINTS ${_leptonica_roots}
+        PATH_SUFFIXES include include/leptonica
+    )
+endif()
 
 if (NOT LEPTONICA_INCLUDE_DIR AND NOT LEPTONICA_TARGET)
     find_path(LEPTONICA_INCLUDE_DIR
@@ -76,11 +88,6 @@ if (NOT LEPTONICA_TARGET)
 endif()
 
 if (LEPTONICA_INCLUDE_DIR)
-    cmake_path(GET LEPTONICA_INCLUDE_DIR FILENAME _leptonica_include_leaf)
-    if (_leptonica_include_leaf STREQUAL "leptonica")
-        cmake_path(GET LEPTONICA_INCLUDE_DIR PARENT_PATH LEPTONICA_INCLUDE_DIR)
-    endif()
-
     target_include_directories(Calc2KeyCEBridgeHostWin PRIVATE
         ${LEPTONICA_INCLUDE_DIR}
     )
