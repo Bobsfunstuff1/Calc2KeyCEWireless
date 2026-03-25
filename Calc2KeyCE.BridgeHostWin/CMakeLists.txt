@@ -102,14 +102,4 @@ target_link_libraries(Calc2KeyCEBridgeHostWin PRIVATE
     d3d11
     $<$<BOOL:${LEPTONICA_TARGET}>:${LEPTONICA_TARGET}>
     $<$<NOT:$<BOOL:${LEPTONICA_TARGET}>>:${LEPTONICA_LIBRARY}>
-    gif
-    jpeg
-    libpng16
-    tiff
-    zlib
-    lzma
-    libwebp
-    libwebpdecoder
-    libwebpdemux
-    libwebpmux
 )
