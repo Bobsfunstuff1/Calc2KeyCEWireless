@@ -55,6 +55,11 @@ else()
         message(FATAL_ERROR "Leptonica was not found. Set LEPTONICA_ROOT or add it to CMAKE_PREFIX_PATH.")
     endif()
 
+    cmake_path(GET LEPTONICA_INCLUDE_DIR FILENAME _leptonica_include_leaf)
+    if (_leptonica_include_leaf STREQUAL "leptonica")
+        cmake_path(GET LEPTONICA_INCLUDE_DIR PARENT_PATH LEPTONICA_INCLUDE_DIR)
+    endif()
+
     target_include_directories(Calc2KeyCEBridgeHostWin PRIVATE
         ${LEPTONICA_INCLUDE_DIR}
     )
