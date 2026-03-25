@@ -38,6 +38,44 @@ For the Windows bridge host:
 - If the runtime DLL is not on `PATH`, set `LEPTONICA_BIN` before launching `Launch-Calc2KeyBridge.ps1`.
 - `CALC2KEY_PI_USER` can be used to prefill the default SSH username in the launcher and bridge host UI.
 
+## Quickstart
+
+### Fastest path for a new user
+
+1. Get a Raspberry Pi on Wi-Fi and confirm SSH access.
+2. Build the Windows host on a Windows machine.
+3. Build or install the Pi relay on the Raspberry Pi.
+4. Build the calculator program with CEdev.
+5. Start the Windows host.
+6. Start the Pi relay with the Windows host IP.
+7. Transfer the calculator binary to the TI-84 Plus CE and run it.
+
+### Minimum commands
+
+Windows host:
+
+```powershell
+cmake -S Calc2KeyCE.BridgeHostWin -B Calc2KeyCE.BridgeHostWin/build -G "Visual Studio 17 2022" -A x64
+cmake --build Calc2KeyCE.BridgeHostWin/build --config Release
+powershell -ExecutionPolicy Bypass -File .\Launch-Calc2KeyBridge.ps1
+```
+
+Pi relay:
+
+```bash
+git clone https://github.com/Bobsfunstuff1/WinCanvasSync.git
+cd WinCanvasSync
+chmod +x tools/install-pi-relay.sh
+./tools/install-pi-relay.sh <windows-host-ip> 28400
+```
+
+Calculator program:
+
+```bash
+cd Calc2KeyCE.Calc
+make
+```
+
 ## Build Guide
 
 ### 1. Windows Bridge Host
@@ -133,6 +171,22 @@ cmake -S Calc2KeyCE.PiRelay -B Calc2KeyCE.PiRelay/build
 cmake --build Calc2KeyCE.PiRelay/build -j
 ```
 
+Quick install script:
+
+```bash
+chmod +x tools/install-pi-relay.sh
+./tools/install-pi-relay.sh <windows-host-ip> 28400
+```
+
+Optional systemd service:
+
+```bash
+sudo cp tools/calc2key-pirelay.service.example /etc/systemd/system/calc2key-pirelay.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now calc2key-pirelay
+sudo systemctl status calc2key-pirelay
+```
+
 Expected outputs:
 
 - `Calc2KeyPiRelay`
@@ -142,6 +196,12 @@ Example run:
 
 ```bash
 ./Calc2KeyCE.PiRelay/build/Calc2KeyPiRelay --bridge <windows-host-ip>:28400
+```
+
+Console relay example:
+
+```bash
+./Calc2KeyCE.PiRelay/build/Calc2PiConsoleRelay --shell /bin/bash
 ```
 
 ### 3. Linux Desktop App
@@ -215,6 +275,24 @@ For the full Windows host + Pi + calculator path:
 5. Launch the Windows host.
 6. Run the Pi relay with the Windows host address.
 7. Transfer and run the calculator program on the TI-84 Plus CE.
+
+## Release Checklist
+
+If you want this repo to be easier for external users, publish these as GitHub Releases:
+
+- Windows host executable build output
+- Pi relay binary for Raspberry Pi
+- calculator binaries from `Calc2KeyCE.Calc/` and `Calc2PiCon.Calc/`
+- a short release note saying which files go on Windows, Pi, and calculator
+
+Recommended release artifact layout:
+
+- `windows/Calc2KeyCEBridgeHostWin.exe`
+- `windows/Launch-Calc2KeyBridge.ps1`
+- `pi/Calc2KeyPiRelay`
+- `pi/Calc2PiConsoleRelay`
+- `calculator/Calc2Key.8xp`
+- `calculator/PiConCtl.8xp`
 
 Third Party Libraries:
 + zx0: https://github.com/einar-saukas/ZX0
