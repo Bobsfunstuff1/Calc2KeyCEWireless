@@ -326,7 +326,6 @@ BLOCK* optimize(unsigned char* input_data, int input_size, int skip, int offset_
 		{
 			if (clock() - start_time > timeout)
 			{
-				printf("compression timeout\n");
 				return NULL;
 			}
 

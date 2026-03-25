@@ -1,131 +1,184 @@
 #include "receiver.h"
-#include <stdio.h>
+
+#include "bridge_client.h"
 #include "keypad.h"
-#include <thread>
+
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <X11/extensions/XTest.h>
+#include <X11/keysym.h>
+#include <chrono>
+#include <cstdio>
+#include <cstring>
+#include <unistd.h>
+
+extern bool bindingKeyState;
+extern uint8_t bindingKey;
+extern uint32_t newBinding;
+const char* getCalcKeyName(uint8_t i);
 
 static uint8_t moveState = 0;
 int mouseSpeed = 10;
 
+using namespace std::chrono;
+
 uint32_t keyBindings[128];
-uint8_t lastCalcKeyUp = -1;
+uint8_t lastCalcKeyUp = static_cast<uint8_t>(-1);
 
 uint8_t recData[7];
-uint8_t prevRecData[7] = { 0 };
+Display* dpy = nullptr;
 
-void receiveThread(libusb_device_handle* devHandle, volatile sig_atomic_t* stop)
-{
-	int received = 0;
-	int inCount = 1;
-	INPUT inputs[128] = { 0 };
+bool keyDownState[128] = { false };
+bool osKeyDown[256] = { false };
+bool osMouseDown[10] = { false };
+static steady_clock::time_point lastPressTime[128];
 
-	while (!*stop)
-	{
-		libusb_bulk_transfer(devHandle, 0x81, recData, 7, &received, 10);
+static void simulateKey(uint32_t keysym, bool press) {
+    if (!dpy) return;
 
-		inCount = 0;
+    const KeyCode kc = XKeysymToKeycode(dpy, keysym);
+    if (!kc) return;
 
-		if (received)
-		{
-			for (uint16_t i = 0; i < 128; i++)
-			{
-				if (!keyBindings[i]) continue;
+    if (press) {
+        if (!osKeyDown[kc]) {
+            XTestFakeKeyEvent(dpy, kc, True, CurrentTime);
+            osKeyDown[kc] = true;
+        }
+    }
+    else {
+        if (osKeyDown[kc]) {
+            XTestFakeKeyEvent(dpy, kc, False, CurrentTime);
+            osKeyDown[kc] = false;
+        }
+    }
 
-				uint8_t dataIdx = (i >> 4) & 7;
-				uint8_t keyShift = i & 0xF;
-				uint8_t key = 1 << keyShift;
+    XFlush(dpy);
+}
 
-				if (dataIdx >= 0 && dataIdx <= 7)
-				{
-					if (keyBindings[i] & 0x10000)
-					{
-						inputs[inCount].type = INPUT_KEYBOARD;
-						inputs[inCount].ki.wVk = (uint16_t)keyBindings[i];
+static void simulateMouse(int button, bool press) {
+    if (!dpy || button < 0 || button >= static_cast<int>(sizeof(osMouseDown))) return;
 
-						if ((recData[dataIdx] & key) && !(prevRecData[dataIdx] & key))
-						{
-							inputs[inCount].ki.dwFlags = 0;
-							inCount++;
-						}
-						else if (!(recData[dataIdx] & key) && (prevRecData[dataIdx] & key))
-						{
-							inputs[inCount].ki.dwFlags = KEYEVENTF_KEYUP;
-							inCount++;
-						}
-					}
-					else
-					{
-						uint8_t mType = keyBindings[i];
+    if (press && !osMouseDown[button]) {
+        XTestFakeButtonEvent(dpy, button, True, CurrentTime);
+        osMouseDown[button] = true;
+    }
+    else if (!press && osMouseDown[button]) {
+        XTestFakeButtonEvent(dpy, button, False, CurrentTime);
+        osMouseDown[button] = false;
+    }
 
-						if (mType == MOUSEEVENTF_MOVE)
-						{
-							uint8_t dir = keyBindings[i] >> 8;
+    XFlush(dpy);
+}
 
-							if ((recData[dataIdx] & key) && !(prevRecData[dataIdx] & key))
-							{
-								moveState |= (1 << dir);
-							}
-							else if (!(recData[dataIdx] & key) && (prevRecData[dataIdx] & key))
-							{
-								moveState &= ~(1 << dir);
-							}
-						}
-						else
-						{
-							inputs[inCount].type = INPUT_MOUSE;
-							inputs[inCount].mi.dwFlags = mType;
-							if ((recData[dataIdx] & key) && !(prevRecData[dataIdx] & key))
-							{
-								inCount++;
-							}
-							else if (!(recData[dataIdx] & key) && (prevRecData[dataIdx] & key))
-							{
-								inputs[inCount].mi.dwFlags <<= 1; // mouseeventf_UP
-								inCount++;
-							}
-						}
-					}
-				}
-			}
+static void simulateMouseMove(int dx, int dy) {
+    if (!dpy) return;
+    XTestFakeRelativeMotionEvent(dpy, dx, dy, CurrentTime);
+}
 
-			for (int i = 0; i < 7; i++)
-			{
-				uint8_t diff = prevRecData[i] & ~(prevRecData[i] & recData[i]);
-				if (diff)
-				{
-					if (diff == 0b1)
-						lastCalcKeyUp = (i << 4) | 0;
-					else if (diff == 0b10)
-						lastCalcKeyUp = (i << 4) | 1;
-					else if (diff == 0b100)
-						lastCalcKeyUp = (i << 4) | 2;
-					else if (diff == 0b1000)
-						lastCalcKeyUp = (i << 4) | 3;
-					else if (diff == 0b10000)
-						lastCalcKeyUp = (i << 4) | 4;
-					else if (diff == 0b100000)
-						lastCalcKeyUp = (i << 4) | 5;
-					else if (diff == 0b1000000)
-						lastCalcKeyUp = (i << 4) | 6;
-					else if (diff == 0b10000000)
-						lastCalcKeyUp = (i << 4) | 7;
-				}
-			}
+static void handleLocalBindings() {
+    for (uint16_t i = 0; i < 128; ++i) {
+        const uint8_t dataIdx = (i >> 4) & 7;
+        const uint8_t bit = i & 0xF;
+        const uint8_t mask = 1 << bit;
 
-			memcpy(prevRecData, recData, received);
-		}
+        if (dataIdx >= 7) {
+            continue;
+        }
 
-		if (moveState)
-		{
-			inputs[inCount].type = INPUT_MOUSE;
-			inputs[inCount].mi.dwFlags = MOUSEEVENTF_MOVE;
-			inputs[inCount].mi.dy = (moveState & 0b1) * -mouseSpeed  + ((moveState & 0b10) >> 1) * mouseSpeed;
-			inputs[inCount].mi.dx = ((moveState & 0b100) >> 2) * -mouseSpeed + ((moveState & 0b1000) >> 3) * mouseSpeed;
-			inCount++;
-		}
+        const bool pressedNow = (recData[dataIdx] & mask) != 0;
+        const bool pressedBefore = keyDownState[i];
+        if (pressedNow == pressedBefore) {
+            continue;
+        }
 
-		SendInput(inCount, inputs, sizeof(INPUT));
-		
-	}
+        keyDownState[i] = pressedNow;
 
-	printf("receive thread exited.\n");
+        if (pressedNow && bindingKeyState && bindingKey == static_cast<uint8_t>(-1)) {
+            bindingKey = static_cast<uint8_t>(i);
+            newBinding = keyBindings[i] ? keyBindings[i] : 0x10000;
+            printf("[BIND] Calculator key %d captured for binding.\n", i);
+        }
+
+        if (!keyBindings[i]) {
+            continue;
+        }
+
+        const uint32_t binding = keyBindings[i];
+        if (binding & 0x10000) {
+            const KeySym keysym = static_cast<KeySym>(binding & 0xFFFF);
+            if (pressedNow) {
+                lastPressTime[i] = steady_clock::now();
+                simulateKey(keysym, true);
+            }
+            else {
+                const auto heldDuration = duration_cast<milliseconds>(steady_clock::now() - lastPressTime[i]).count();
+                if (heldDuration < 150) {
+                    simulateKey(keysym, true);
+                    simulateKey(keysym, false);
+                }
+                else {
+                    simulateKey(keysym, false);
+                }
+            }
+        }
+        else {
+            const uint8_t action = binding & 0xFF;
+            if (action == CUSTOM_MOUSE_MOVE) {
+                const uint8_t dir = (binding >> 8) & 0xFF;
+                if (pressedNow) moveState |= (1 << dir);
+                else moveState &= ~(1 << dir);
+            }
+            else {
+                simulateMouse(action, pressedNow);
+            }
+        }
+
+        if (!pressedNow) {
+            lastCalcKeyUp = static_cast<uint8_t>(i);
+        }
+    }
+}
+
+void receiveThread(libusb_device_handle* devHandle, std::atomic<bool>& stop, bool bridgeMode, BridgeClient* bridgeClient) {
+    int received = 0;
+
+    if (!bridgeMode) {
+        dpy = XOpenDisplay(nullptr);
+        if (!dpy) {
+            fprintf(stderr, "Failed to open X display\n");
+            stop.store(true);
+            return;
+        }
+    }
+
+    while (!stop.load()) {
+        const int rc = libusb_bulk_transfer(devHandle, 0x81, recData, sizeof(recData), &received, 10);
+        if (rc == 0 && received == 7) {
+            if (bridgeMode) {
+                if (!bridgeClient || !bridgeClient->sendCalcKeys(recData, sizeof(recData))) {
+                    fprintf(stderr, "Bridge send failed: %s\n", bridgeClient ? bridgeClient->lastError().c_str() : "bridge client missing");
+                    stop.store(true);
+                    break;
+                }
+            }
+            else {
+                handleLocalBindings();
+            }
+        }
+
+        if (!bridgeMode && moveState) {
+            const int dy = ((moveState & 0b0001) ? -1 : 0) + ((moveState & 0b0010) ? 1 : 0);
+            const int dx = ((moveState & 0b0100) ? -1 : 0) + ((moveState & 0b1000) ? 1 : 0);
+            simulateMouseMove(dx * mouseSpeed, dy * mouseSpeed);
+        }
+
+        usleep(1000);
+    }
+
+    if (dpy) {
+        XCloseDisplay(dpy);
+        dpy = nullptr;
+    }
+
+    printf("receive thread exited.\n");
 }

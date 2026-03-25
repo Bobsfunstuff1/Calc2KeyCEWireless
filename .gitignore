@@ -347,3 +347,15 @@ healthchecksdb
 /Calc2KeyCE.Universal/osx-x64/dist
 /Calc2KeyCE.Universal/win-x64/build
 /Calc2KeyCE.Fast/vcpkg_installed/x64-windows
+/Calc2KeyCE.BridgeHostWin/build/
+/Calc2KeyCE.Fast/build/
+/Calc2KeyCE.Fast/codex-build/
+/Calc2KeyCE.Fast/codex-wsl-build/
+/Calc2KeyCE.Fast/out/
+/Calc2KeyCE.Fast/.vs/
+/Calc2KeyCE.Fast/imgui/.git/
+/bridge-host.err.log
+/bridge-host.out.log
+/bridge_host.log
+/Calc2KeyCE.Fast/imgui.ini
+/Calc2KeyCE.Fast/keybinds.cfg

@@ -94,7 +94,6 @@ int main(void)
 			if (!_transfer_scheduled)
 			{
 				usb_ScheduleTransfer(_out_endpoint, &_in_buffer, _request_size, screen_transfer_callback, &_in_buffer);
-
 				_transfer_scheduled = true;
 			}
 
@@ -115,7 +114,7 @@ int main(void)
 						_keys[5] = kb_Data[6];
 						_keys[6] = kb_Data[7];
 
-						_key_transfer_complete = false; 
+						_key_transfer_complete = false;
 						usb_ScheduleTransfer(_in_endpoint, _keys, 7, key_transfer_callback, NULL);
 					}
 				}
@@ -131,7 +130,6 @@ int main(void)
 	lcd_Control = 0b00000100100101101; // back to rgb 565 mode
 
 	usb_Cleanup();
-
 	// because we're using pixelShadow as the base of heap, clear it out to eliminate screen artifacts on exit
 	memset((void*)(0x0D031F6), 0, 8400);
 
@@ -144,9 +142,7 @@ static usb_error_t key_transfer_callback(usb_endpoint_t endpoint, usb_transfer_s
 	(void)status;
 	(void)transferred;
 	(void)data;
-	
 	_key_transfer_complete = true;
-
 	return USB_SUCCESS;
 }
 
@@ -222,7 +218,6 @@ static usb_error_t screen_transfer_callback(usb_endpoint_t endpoint, usb_transfe
 	}
 
 	_transfer_scheduled = false;
-
 	return USB_SUCCESS;
 }
 
@@ -234,7 +229,6 @@ static usb_error_t event_handler(usb_event_t event, void* event_data, usb_callba
 	if (event == USB_HOST_CONFIGURE_EVENT)
 	{
 		usb_device_t host_device = usb_FindDevice(NULL, NULL, USB_SKIP_HUBS);
-
 		if (!host_device)
 		{
 			return USB_ERROR_NO_DEVICE;
@@ -242,7 +236,6 @@ static usb_error_t event_handler(usb_event_t event, void* event_data, usb_callba
 
 		_out_endpoint = usb_GetDeviceEndpoint(host_device, 0x02);
 		_in_endpoint = usb_GetDeviceEndpoint(host_device, 0x81);
-
 		_connected = true;
 	}
 
