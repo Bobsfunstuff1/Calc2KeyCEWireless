@@ -24,7 +24,6 @@ At a high level, the remote bridge flow is:
 - `Calc2KeyCE.PiRelay/`: Raspberry Pi relay programs
 - `Calc2KeyCE.Fast/`: Linux desktop application
 - `Calc2KeyCE.Calc/`: main calculator program
-- `Calc2PiCon.Calc/`: calculator-side console relay helper
 - `_vendor/`: vendored third-party components used by the Windows display workflow
 
 ## Repo Notes
@@ -252,7 +251,6 @@ cmake --build Calc2KeyCE.Fast/build -j
 Sources:
 
 - `Calc2KeyCE.Calc/`
-- `Calc2PiCon.Calc/`
 
 These use the CEdev toolchain.
 
@@ -265,11 +263,6 @@ Example builds:
 
 ```bash
 cd Calc2KeyCE.Calc
-make
-```
-
-```bash
-cd Calc2PiCon.Calc
 make
 ```
 
@@ -293,7 +286,7 @@ If you want this repo to be easier for external users, publish these as GitHub R
 
 - Windows host executable build output
 - Pi relay binary for Raspberry Pi
-- calculator binaries from `Calc2KeyCE.Calc/` and `Calc2PiCon.Calc/`
+- calculator binary from `Calc2KeyCE.Calc/`
 - a short release note saying which files go on Windows, Pi, and calculator
 
 Recommended release artifact layout:
@@ -303,7 +296,6 @@ Recommended release artifact layout:
 - `pi/Calc2KeyPiRelay`
 - `pi/Calc2PiConsoleRelay`
 - `calculator/Calc2Key.8xp`
-- `calculator/PiConCtl.8xp`
 
 This repo also includes:
 

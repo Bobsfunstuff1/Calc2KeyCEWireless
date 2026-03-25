@@ -10,7 +10,6 @@ $zipPath = Join-Path $repoRoot "$OutputDir\Calc2KeyCE-Calculator.zip"
 
 $files = @(
     (Join-Path $repoRoot 'Calc2KeyCE.Calc\bin\Calc2Key.8xp'),
-    (Join-Path $repoRoot 'Calc2PiCon.Calc\bin\PiConCtl.8xp'),
     (Join-Path $repoRoot 'README.md')
 )
 
@@ -24,7 +23,6 @@ New-Item -ItemType Directory -Force -Path $stageDir | Out-Null
 Remove-Item -Recurse -Force (Join-Path $stageDir '*') -ErrorAction SilentlyContinue
 
 Copy-Item (Join-Path $repoRoot 'Calc2KeyCE.Calc\bin\Calc2Key.8xp') $stageDir -Force
-Copy-Item (Join-Path $repoRoot 'Calc2PiCon.Calc\bin\PiConCtl.8xp') $stageDir -Force
 Copy-Item (Join-Path $repoRoot 'README.md') $stageDir -Force
 
 if (Test-Path $zipPath) {

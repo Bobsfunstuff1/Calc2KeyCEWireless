@@ -34,8 +34,6 @@ jobs:
         run: |
           make -C Calc2KeyCE.Calc clean
           make -C Calc2KeyCE.Calc
-          make -C Calc2PiCon.Calc clean
-          make -C Calc2PiCon.Calc
 
       - name: Package calculator artifacts
         run: |

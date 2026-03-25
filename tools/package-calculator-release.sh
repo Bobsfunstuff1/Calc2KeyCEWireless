@@ -8,7 +8,6 @@ zip_path="${repo_root}/${output_dir}/Calc2KeyCE-Calculator.zip"
 
 files=(
   "${repo_root}/Calc2KeyCE.Calc/bin/Calc2Key.8xp"
-  "${repo_root}/Calc2PiCon.Calc/bin/PiConCtl.8xp"
   "${repo_root}/README.md"
 )
 
@@ -24,7 +23,6 @@ rm -f "${zip_path}"
 find "${stage_dir}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
 
 cp "${repo_root}/Calc2KeyCE.Calc/bin/Calc2Key.8xp" "${stage_dir}/"
-cp "${repo_root}/Calc2PiCon.Calc/bin/PiConCtl.8xp" "${stage_dir}/"
 cp "${repo_root}/README.md" "${stage_dir}/"
 
 (
