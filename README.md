@@ -1,6 +1,6 @@
-# Calc2KeyCE
+# Calc2KeyCEWireless
 
-Calc2KeyCE is a multi-part project built around TI-84 Plus CE calculators.
+Calc2KeyCEWireless is a multi-part project built around TI-84 Plus CE calculators.
 
 The repo now contains the full stack:
 
@@ -62,8 +62,8 @@ powershell -ExecutionPolicy Bypass -File .\Launch-Calc2KeyBridge.ps1
 Pi relay:
 
 ```bash
-git clone https://github.com/Bobsfunstuff1/WinCanvasSync.git
-cd WinCanvasSync
+git clone https://github.com/Bobsfunstuff1/Calc2KeyCEWireless.git
+cd Calc2KeyCEWireless
 chmod +x tools/install-pi-relay.sh
 ./tools/install-pi-relay.sh <windows-host-ip> 28400
 ```
@@ -173,8 +173,8 @@ cmake --build Calc2KeyCE.PiRelay/build -j
 Example full Pi setup after SSH is working:
 
 ```bash
-git clone https://github.com/Bobsfunstuff1/WinCanvasSync.git
-cd WinCanvasSync
+git clone https://github.com/Bobsfunstuff1/Calc2KeyCEWireless.git
+cd Calc2KeyCEWireless
 sudo apt update
 sudo apt install -y build-essential cmake pkg-config libusb-1.0-0-dev
 cmake -S Calc2KeyCE.PiRelay -B Calc2KeyCE.PiRelay/build
